@@ -1,0 +1,12 @@
+Starting KarmaLego...
+Loaded list from AppSettings:DomainNames: EEG_Memo
+Domain: EEG_Memo
+Getting Data from Database
+Getting Data from Database - Execution Time: 0.03492647 minutes
+Running KarmaLego
+Found: 6761 Patterns
+Pattern Level Counts: Level 2: Count = 6178, Level 3: Count = 583
+Running KarmaLego - Execution Time: 1.8694568433333334 minutes
+Computing Statistics
+Computing Statistics - Execution Time: 1.9269354366666667 minutes
+KarmaLego finished with result: Done

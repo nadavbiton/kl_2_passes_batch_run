@@ -1,0 +1,1 @@
+{"concepts":"System.Collections.Generic.List`1[System.Int32]","entities":"System.Collections.Generic.List`1[System.String]","mvs":"0.9","maxGap":"80000","timeUnit":"Seconds","statistics_type":"HorizontalSupport"}

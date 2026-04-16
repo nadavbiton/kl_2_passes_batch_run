@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<state id="12447" name="S105_CPz_after_low_gamma_INTERPOLATE_tail_state" concept-type="state">
+  <categories/>
+  <standard-terms/>
+  <synonyms/>
+  <temporal-semantic downward-hereditary="true" forward="false" backward="false" solid="true" concatenable="true" gestalt="false"/>  
+  <clippers/>
+  <derived-from>
+    <derived-from-id>490</derived-from-id>
+  </derived-from>
+  <abstraction-at-contexts/>
+
+  <mapping-function rank-selection-criteria="min">
+    <mapping-functions-to-values>
+      <mapping-function-2-value order="0" value="low">
+        <evaluation-tree data-type="logical-function">
+          <logical-function logical-operator="and">
+            <operands>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="bigger-equal">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>-1.8537526</double>
+                  </right>
+                </comparison-function>
+              </operand>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="smaller">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>-0.184304291382432</double>
+                  </right>
+                </comparison-function>
+              </operand>
+            </operands>
+          </logical-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+      <mapping-function-2-value order="1" value="mid">
+        <evaluation-tree data-type="logical-function">
+          <logical-function logical-operator="and">
+            <operands>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="bigger-equal">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>-0.184304291382432</double>
+                  </right>
+                </comparison-function>
+              </operand>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="smaller">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>1.0821708649396897</double>
+                  </right>
+                </comparison-function>
+              </operand>
+            </operands>
+          </logical-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+      <mapping-function-2-value order="2" value="high">
+        <evaluation-tree data-type="logical-function">
+          <logical-function logical-operator="and">
+            <operands>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="bigger-equal">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>1.0821708649396897</double>
+                  </right>
+                </comparison-function>
+              </operand>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="smaller">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="490"/>
+                  </left>
+                  <right data-type="double">
+                    <double>1.9508246</double>
+                  </right>
+                </comparison-function>
+              </operand>
+            </operands>
+          </logical-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+    </mapping-functions-to-values>
+  </mapping-function>
+  <ordinal-allowed-values output-type="ordinal">
+    <persistence>
+      <global-persistence granularity="second" behavior="pos-pos">
+        <interpolation-table>
+          <rows/>
+        </interpolation-table>
+      </global-persistence>
+      <local-persistence>
+        <good-before value="0" granularity="second"/>
+        <good-after value="0" granularity="second"/>
+      </local-persistence>
+    </persistence>
+    <values>
+      <ordinal-allowed-value order="0" value="low"/>
+      <ordinal-allowed-value order="1" value="mid"/>
+      <ordinal-allowed-value order="2" value="high"/>
+    </values>
+  </ordinal-allowed-values>
+</state>

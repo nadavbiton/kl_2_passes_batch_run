@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<numeric-raw-concept id="46" name="S101_F8_after_volt_INTERPOLATE" concept-type="raw-numeric">
+  <categories/>
+  <standard-terms/>
+  <synonyms/>
+  <temporal-semantic downward-hereditary="true" forward="false" backward="false" solid="true" concatenable="true" gestalt="false"/>
+  <clippers/>
+  <numeric-allowed-values min-value="-31.7266138" max-value="40.5761441" units="volts" scale="ratio" output-type="numeric">
+    <persistence>
+      <global-persistence granularity="second" behavior="pos-pos">
+        <interpolation-table>
+          <rows/>
+        </interpolation-table>
+      </global-persistence>
+      <local-persistence>
+        <good-before value="0" granularity="second"/>
+        <good-after value="15625" granularity="second"/>
+      </local-persistence>
+    </persistence>
+  </numeric-allowed-values>
+</numeric-raw-concept>

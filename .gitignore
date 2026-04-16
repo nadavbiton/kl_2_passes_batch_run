@@ -1,0 +1,15 @@
+pythonProject/
+__pycache__/ 
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+input/
+output/ 
+.idea/
+.vscode/
+*.egg-info/
+
+
