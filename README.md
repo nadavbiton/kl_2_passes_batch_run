@@ -53,11 +53,12 @@ Example file: `run_config.example.json`
 - `runtime/pass_2/LogsPath`
 - `runtime/pass_2/appsettings.json`
 - `<output_dir>/archive/pass_1/<batch_id>/...`
+- `<output_dir>/reuse_by_batch/<batch_id>/...`
 
 ## Pass 1 Outputs
 - `candidates_union.csv`: union candidates with `pattern_name, level, parent_name, batch_count`
-- `pattern_support_by_batch.json`: `batch_id -> {pattern_name: support_value}`
-- `pattern_hz_by_batch.json`: `batch_id -> {pattern_name -> {entity_id: hz}}`
+- `reuse_by_batch/<batch_id>/patterns_support.csv`: copied from Generic batch output
+- `reuse_by_batch/<batch_id>/results.csv`: copied from Generic batch output
 - `sequence_result.json`: top-level run summary (includes Pass 1 `candidate_count` list per batch)
 
 ## Main Files
@@ -79,10 +80,12 @@ This runner:
 - writes CandidateCount master config to `runtime/pass_2/KarmalegoConfigPath/config_file.json`
 - writes runtime appsettings to `runtime/pass_2/appsettings.json` with `VersionType=CandidateCount`
 - runs KarmaLego once with `--appsettings runtime/pass_2/appsettings.json`
-- validates `runtime/pass_2/ResultsPath/batch_count_summary.json` and `runtime/pass_2/ResultsPath/<batch_id>/patterns_support.csv` outputs
-- validates `runtime/pass_2/ResultsPath/<batch_id>/results_hz.csv` outputs
+- provides `reuse_by_batch_root=<output_dir>/reuse_by_batch` to CandidateCount
 - builds `<output_dir>/patterns_support_tot_pop.csv` by summing all batch `patterns_support.csv` files
 - builds `<output_dir>/results_hz_tot_pop.csv` by concatenating all batch `results_hz.csv` files
+- validates aggregated consistency between those two files:
+  - same pattern set
+  - `supporting_entities_count == count(hz > 0)` per pattern
 - copies CandidateCount outputs into `<output_dir>/archive/pass_2/...`
 - writes `pass_2_candidatecount_result.json` under `output_dir` (standalone run)
 

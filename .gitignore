@@ -11,5 +11,8 @@ output/
 .idea/
 .vscode/
 *.egg-info/
+run_config.json
+input_package/
+runtime/
 
 

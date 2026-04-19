@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,7 +21,6 @@ if __package__ in {None, ""}:
         run_karmalego,
         validate_input_package,
         write_runtime_appsettings,
-        write_json,
     )
 else:
     from .karmalego_runtime_common import (
@@ -33,7 +33,6 @@ else:
         run_karmalego,
         validate_input_package,
         write_runtime_appsettings,
-        write_json,
     )
 
 
@@ -72,65 +71,21 @@ def _write_candidates_union_csv(
             )
 
 
-def _extract_batch_support_map(results_root: Path) -> dict[str, float]:
-    support_by_pattern: dict[str, float] = {}
-    for file_path in results_root.rglob("patterns_support.csv"):
-        with file_path.open("r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                name = (row.get("pattern_name") or "").strip()
-                if not name:
-                    continue
-                # Prefer absolute entity count; fallback to vertical support ratio.
-                raw_value = (row.get("supporting_entities_count") or "").strip()
-                if not raw_value:
-                    raw_value = (row.get("vertical_support") or "").strip()
-                if not raw_value:
-                    continue
-                try:
-                    value = float(raw_value)
-                except ValueError:
-                    continue
-                prev = support_by_pattern.get(name)
-                if prev is None or value > prev:
-                    support_by_pattern[name] = value
-    return support_by_pattern
+def _resolve_single_csv(results_root: Path, file_name: str) -> Path:
+    matches = sorted(results_root.rglob(file_name))
+    if not matches:
+        raise FileNotFoundError(f"missing '{file_name}' under {results_root}")
+    if len(matches) > 1:
+        raise RuntimeError(f"expected one '{file_name}' under {results_root}, found {len(matches)}")
+    return matches[0]
 
 
-def _extract_batch_hz_map(results_root: Path) -> dict[str, dict[str, float]]:
-    """
-    Extract sparse HZ map from generic results.csv files:
-      pattern_name -> {entity_id: hz}
-    """
-    hz_by_pattern: dict[str, dict[str, float]] = {}
-    ignore_cols = {"id", "class_name", "value"}
-
-    for file_path in results_root.rglob("results.csv"):
-        with file_path.open("r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                continue
-            pattern_cols = [c for c in reader.fieldnames if c and c.strip() and c.strip() not in ignore_cols]
-            for row in reader:
-                entity_id = (row.get("id") or "").strip()
-                if not entity_id:
-                    continue
-                for pattern_name in pattern_cols:
-                    raw = (row.get(pattern_name) or "").strip()
-                    if not raw:
-                        continue
-                    try:
-                        hz = float(raw)
-                    except ValueError:
-                        continue
-                    if hz <= 0:
-                        continue
-                    per_pattern = hz_by_pattern.setdefault(pattern_name, {})
-                    prev = per_pattern.get(entity_id)
-                    if prev is None or hz > prev:
-                        per_pattern[entity_id] = hz
-
-    return {k: hz_by_pattern[k] for k in sorted(hz_by_pattern)}
+def _copy_batch_reuse_csvs(results_root: Path, reuse_batch_dir: Path) -> None:
+    support_src = _resolve_single_csv(results_root, "patterns_support.csv")
+    hz_src = _resolve_single_csv(results_root, "results.csv")
+    reuse_batch_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(support_src, reuse_batch_dir / "patterns_support.csv")
+    shutil.copy2(hz_src, reuse_batch_dir / "results.csv")
 
 
 def run_pass_1(
@@ -142,14 +97,13 @@ def run_pass_1(
     input_package = validate_input_package(input_package_dir)
     ensure_dir(output_dir)
     archive_root = output_dir / "archive" / "pass_1"
+    reuse_root = output_dir / "reuse_by_batch"
 
     union_levels: dict[str, int | None] = {}
     union_parents: dict[str, str] = {}
     union_relation_pairs: dict[str, str] = {}
     union_components: dict[str, str] = {}
     pattern_batch_counts: dict[str, int] = {}
-    batch_pattern_support: dict[str, dict[str, float]] = {}
-    batch_pattern_hz: dict[str, dict[str, dict[str, float]]] = {}
     pass_1_summary: list[dict] = []
 
     max_parallel = max(1, int(max_parallel))
@@ -177,9 +131,8 @@ def run_pass_1(
         error = ""
         batch_candidates: set[str] = set()
         batch_metadata: dict[str, dict[str, int | str | None]] = {}
-        batch_support_map: dict[str, float] = {}
-        batch_hz_map: dict[str, dict[str, float]] = {}
         runtime_paths = get_pass_1_worker_runtime_paths(worker_id)
+        archive_results_root: Path | None = None
 
         with print_lock:
             print(f"[Run] START batch {index}/{total_batches}: {batch_id} | worker=w{worker_id}")
@@ -194,10 +147,9 @@ def run_pass_1(
                 results_source=runtime_paths.results_dir,
                 logs_source=runtime_paths.logs_dir,
             )
-            batch_metadata = extract_pattern_metadata_from_results(archive_path / "results")
+            archive_results_root = archive_path / "results"
+            batch_metadata = extract_pattern_metadata_from_results(archive_results_root)
             batch_candidates = set(batch_metadata.keys())
-            batch_support_map = _extract_batch_support_map(archive_path / "results")
-            batch_hz_map = _extract_batch_hz_map(archive_path / "results")
         except Exception as exc:  # noqa: BLE001
             status = "failed"
             error = str(exc)
@@ -217,8 +169,7 @@ def run_pass_1(
             "error": error,
             "candidate_count": len(batch_candidates),
             "metadata": batch_metadata,
-            "support_map": batch_support_map,
-            "hz_map": batch_hz_map,
+            "archive_results_root": str(archive_results_root) if archive_results_root is not None else "",
         }
 
     batch_result_by_index: dict[int, dict] = {}
@@ -237,8 +188,6 @@ def run_pass_1(
         status = str(row["status"])
         batch_metadata = dict(row["metadata"])
         batch_candidates = set(batch_metadata.keys())
-        batch_support_map = dict(row["support_map"])
-        batch_hz_map = dict(row["hz_map"])
         for name, md in batch_metadata.items():
             level = md.get("level")
             parent_name = str(md.get("parent_name") or "")
@@ -267,8 +216,8 @@ def run_pass_1(
         for name in batch_candidates:
             pattern_batch_counts[name] = pattern_batch_counts.get(name, 0) + 1
         if status == "success":
-            batch_pattern_support[batch_id] = dict(sorted(batch_support_map.items()))
-            batch_pattern_hz[batch_id] = batch_hz_map
+            archive_results_root = Path(str(row["archive_results_root"]))
+            _copy_batch_reuse_csvs(archive_results_root, reuse_root / batch_id)
         pass_1_summary.append(
             {
                 "batch_id": batch_id,
@@ -285,8 +234,6 @@ def run_pass_1(
         pattern_batch_counts,
         output_dir / "candidates_union.csv",
     )
-    write_json(batch_pattern_support, output_dir / "pattern_support_by_batch.json")
-    write_json(batch_pattern_hz, output_dir / "pattern_hz_by_batch.json")
 
     print(
         f"[Run] Completed. success={sum(1 for row in pass_1_summary if row['status']=='success')} "
