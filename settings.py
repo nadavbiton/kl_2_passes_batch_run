@@ -9,7 +9,7 @@ DEFAULT_RUN_CONFIG_PATH = PROJECT_ROOT / "run_config.json"
 PASS_2_RUNTIME_ROOT = RUNTIME_ROOT / "pass_2"
 
 # External executables
-KARMALEGO_EXE = Path(r"C:\KarmaLego\KarmaLegoConsoleApp\bin\Release\net8.0\KarmaLegoConsoleApp.exe")
+KARMALEGO_EXE = (PROJECT_ROOT / ".." / "KarmaLego" / "KarmaLegoConsoleApp" / "bin" / "Release" / "net8.0" / "KarmaLegoConsoleApp.exe").resolve()
 MEDIATOR_API_EXE = Path(r"C:\MediatorCore-main\MediatorCore\APICore\bin\Release\net8.0\API.exe")
 
 # Mediator / SQL

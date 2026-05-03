@@ -12,7 +12,7 @@ if __package__ in {None, ""}:
         get_pass_1_worker_runtime_paths,
         get_pass_2_runtime_paths,
         ensure_runtime_dirs,
-        load_csv_gz_to_input_table,
+        load_csv_to_input_table,
         prepare_tables,
         run_mediator_populate,
         validate_input_package,
@@ -24,7 +24,7 @@ else:
         get_pass_1_worker_runtime_paths,
         get_pass_2_runtime_paths,
         ensure_runtime_dirs,
-        load_csv_gz_to_input_table,
+        load_csv_to_input_table,
         prepare_tables,
         run_mediator_populate,
         validate_input_package,
@@ -41,6 +41,6 @@ def run_prepare(input_package_dir: Path) -> None:
     clean_runtime_work_dirs(pass_2_runtime)
     prepare_tables()
     copy_taks_to_destination(input_package.taks_dir)
-    load_csv_gz_to_input_table(input_package.data_csv_gz)
+    load_csv_to_input_table(input_package.data_file)
     run_mediator_populate()
 

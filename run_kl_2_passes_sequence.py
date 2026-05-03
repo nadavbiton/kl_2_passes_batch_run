@@ -7,12 +7,16 @@ if __package__ in {None, ""}:
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from kl_2_passes_batch_run.karmalego_runtime_common import read_run_config, write_json  # type: ignore
+    from kl_2_passes_batch_run.karmalego_runtime_common import (  # type: ignore
+        prepare_file_mode_inputs,
+        read_run_config,
+        write_json,
+    )
     from kl_2_passes_batch_run.prepare_kl_run import run_prepare  # type: ignore
     from kl_2_passes_batch_run.pass_1 import run_pass_1  # type: ignore
     from kl_2_passes_batch_run.pass_2 import run_pass_2  # type: ignore
 else:
-    from .karmalego_runtime_common import read_run_config, write_json
+    from .karmalego_runtime_common import prepare_file_mode_inputs, read_run_config, write_json
     from .prepare_kl_run import run_prepare
     from .pass_1 import run_pass_1
     from .pass_2 import run_pass_2
@@ -28,6 +32,9 @@ def run_sequence(config_path: Path | None = None) -> dict:
     use_fast_count_engine = bool(config.get("use_fast_count_engine", False))
     pass_1_max_parallel = max(1, int(config.get("pass_1_max_parallel", 1)))
     pass_1_emit_karmalego_output = bool(config.get("pass_1_emit_karmalego_output", False))
+    data_mode = str(config.get("data_mode", "sql")).strip().lower()
+    if data_mode not in {"sql", "file"}:
+        raise ValueError("data_mode must be one of: 'sql', 'file'.")
 
     print(f"[Sequence] mode={mode}")
     print(f"[Sequence] input_package_dir={input_package_dir}")
@@ -45,7 +52,10 @@ def run_sequence(config_path: Path | None = None) -> dict:
 
     if mode == "full_run":
         print("[Sequence] Running PREPARE stage...")
-        run_prepare(input_package_dir)
+        if data_mode == "sql":
+            run_prepare(input_package_dir)
+        else:
+            prepare_file_mode_inputs(input_package_dir)
         print("[Sequence] PREPARE stage finished.")
         print("[Sequence] START Pass 1")
         pass_1_start = time.perf_counter()
@@ -54,6 +64,7 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             max_parallel=pass_1_max_parallel,
             emit_karmalego_output=pass_1_emit_karmalego_output,
+            data_mode=data_mode,
         )
         pass_1_runtime_minutes = round((time.perf_counter() - pass_1_start) / 60, 3)
         print("[Sequence] END Pass 1")
@@ -66,11 +77,14 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             domain_name=domain_name,
             use_fast_count_engine=use_fast_count_engine,
+            data_mode=data_mode,
         )
         pass_2_runtime_minutes = round((time.perf_counter() - pass_2_start) / 60, 3)
         print("[Sequence] END Pass 2")
     elif mode == "run_pass_1_2":
         print("[Sequence] Running Pass 1 + Pass 2...")
+        if data_mode == "file":
+            prepare_file_mode_inputs(input_package_dir)
         print("[Sequence] START Pass 1")
         pass_1_start = time.perf_counter()
         pass_1_result = run_pass_1(
@@ -78,6 +92,7 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             max_parallel=pass_1_max_parallel,
             emit_karmalego_output=pass_1_emit_karmalego_output,
+            data_mode=data_mode,
         )
         pass_1_runtime_minutes = round((time.perf_counter() - pass_1_start) / 60, 3)
         print("[Sequence] END Pass 1")
@@ -90,11 +105,14 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             domain_name=domain_name,
             use_fast_count_engine=use_fast_count_engine,
+            data_mode=data_mode,
         )
         pass_2_runtime_minutes = round((time.perf_counter() - pass_2_start) / 60, 3)
         print("[Sequence] END Pass 2")
     elif mode == "run_pass_1":
         print("[Sequence] Running Pass 1 only...")
+        if data_mode == "file":
+            prepare_file_mode_inputs(input_package_dir)
         print("[Sequence] START Pass 1")
         pass_1_start = time.perf_counter()
         pass_1_result = run_pass_1(
@@ -102,11 +120,14 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             max_parallel=pass_1_max_parallel,
             emit_karmalego_output=pass_1_emit_karmalego_output,
+            data_mode=data_mode,
         )
         pass_1_runtime_minutes = round((time.perf_counter() - pass_1_start) / 60, 3)
         print("[Sequence] END Pass 1")
     elif mode == "run_pass_2":
         print("[Sequence] Running Pass 2 only...")
+        if data_mode == "file":
+            prepare_file_mode_inputs(input_package_dir)
         if not domain_name:
             raise ValueError("candidatecount_domain_name is required for mode 'run_pass_2'.")
         print("[Sequence] START Pass 2")
@@ -116,6 +137,7 @@ def run_sequence(config_path: Path | None = None) -> dict:
             output_dir=output_dir,
             domain_name=domain_name,
             use_fast_count_engine=use_fast_count_engine,
+            data_mode=data_mode,
         )
         pass_2_runtime_minutes = round((time.perf_counter() - pass_2_start) / 60, 3)
         print("[Sequence] END Pass 2")
@@ -144,4 +166,3 @@ def run_sequence(config_path: Path | None = None) -> dict:
 
 if __name__ == "__main__":
     run_sequence()
-

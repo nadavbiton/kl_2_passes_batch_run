@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import csv
+import gzip
 import json
 import re
 import shutil
@@ -18,7 +19,7 @@ from . import settings
 @dataclass(frozen=True)
 class InputPackage:
     root: Path
-    data_csv_gz: Path
+    data_file: Path
     taks_dir: Path
     batch_configs: list[Path]
 
@@ -61,6 +62,10 @@ def get_pass_1_worker_runtime_paths(worker_id: int) -> RuntimePaths:
 
 def get_pass_2_runtime_paths() -> RuntimePaths:
     return _build_runtime_paths(settings.PASS_2_RUNTIME_ROOT)
+
+
+def get_runtime_data_dir() -> Path:
+    return settings.RUNTIME_ROOT / "data"
 
 
 def _build_runtime_paths(root: Path) -> RuntimePaths:
@@ -109,13 +114,15 @@ def prepare_tables() -> None:
         truncate_table(settings.KNOWLEDGE_TABLE)
 
 
-def load_csv_gz_to_input_table(csv_gz_path: Path) -> None:
-    print(f"[Prepare] Loading dataset: {csv_gz_path}")
+def load_csv_to_input_table(csv_path: Path) -> None:
+    print(f"[Prepare] Loading dataset: {csv_path}")
+    path_lower = csv_path.name.lower()
+    compression = "gzip" if path_lower.endswith(".csv.gz") else None
     total_rows = 0
     for chunk_idx, chunk in enumerate(
         pd.read_csv(
-            csv_gz_path,
-            compression="gzip",
+            csv_path,
+            compression=compression,
             chunksize=settings.CSV_CHUNK_SIZE,
             dtype={"StartTime": "string", "EndTime": "string"},
         ),
@@ -284,9 +291,19 @@ def _set_karmalego_appsettings_values(
         app_settings["VersionType"] = version_type
 
 
-def write_runtime_appsettings(runtime_paths: RuntimePaths, version_type: str) -> Path:
+def write_runtime_appsettings(runtime_paths: RuntimePaths, version_type: str, data_mode: str = "sql") -> Path:
     ensure_runtime_dirs(runtime_paths)
     data = _load_appsettings_json(get_karmalego_appsettings_path())
+    connection_strings = data.setdefault("connectionStrings", {})
+    if not isinstance(connection_strings, dict):
+        raise RuntimeError("connectionStrings section is not an object in appsettings.json")
+    normalized_mode = data_mode.strip().lower()
+    if normalized_mode == "file":
+        connection_strings["DBType"] = "File"
+    elif normalized_mode == "sql":
+        connection_strings["DBType"] = "SQLServer"
+    else:
+        raise ValueError(f"Unsupported data_mode '{data_mode}'. Expected 'sql' or 'file'.")
     _set_karmalego_appsettings_values(
         data,
         config_path=runtime_paths.config_file,
@@ -548,6 +565,47 @@ def parse_batch_number(name: str) -> int:
     return int(match.group(1)) if match else 10**9
 
 
+def _find_single_csv_or_gz(folder: Path, label: str) -> Path:
+    if not folder.exists():
+        raise FileNotFoundError(f"Missing {label} dir: {folder}")
+    matches = sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")], key=lambda p: p.name.lower())
+    if not matches:
+        raise RuntimeError(f"No {label} file found in {folder}. Expected one .csv or .csv.gz file.")
+    if len(matches) > 1:
+        names = ", ".join(p.name for p in matches)
+        raise RuntimeError(f"Ambiguous {label} files in {folder}. Expected one file, found: {names}")
+    return matches[0]
+
+
+def prepare_file_mode_inputs(input_package_dir: Path) -> tuple[Path, Path]:
+    if not input_package_dir.exists():
+        raise FileNotFoundError(f"Input package dir not found: {input_package_dir}")
+
+    events_src = _find_single_csv_or_gz(input_package_dir / "data", "events")
+    knowledge_src = _find_single_csv_or_gz(input_package_dir / "concepts", "knowledge")
+
+    runtime_data_dir = get_runtime_data_dir()
+    ensure_dir(runtime_data_dir)
+    for stale_name in ("events.csv", "events.csv.gz", "knowledge.csv", "knowledge.csv.gz"):
+        stale_path = runtime_data_dir / stale_name
+        if stale_path.exists():
+            stale_path.unlink()
+
+    events_dst_name = "events.csv.gz" if events_src.name.lower().endswith(".csv.gz") else "events.csv"
+    events_dst = runtime_data_dir / events_dst_name
+    knowledge_dst = runtime_data_dir / "knowledge.csv.gz"
+
+    shutil.copy2(events_src, events_dst)
+
+    if knowledge_src.name.lower().endswith(".csv.gz"):
+        shutil.copy2(knowledge_src, knowledge_dst)
+    else:
+        with knowledge_src.open("rb") as src_f, gzip.open(knowledge_dst, "wb") as dst_f:
+            shutil.copyfileobj(src_f, dst_f)
+
+    return events_dst, knowledge_dst
+
+
 def validate_input_package(input_package_dir: Path) -> InputPackage:
     if not input_package_dir.exists():
         raise FileNotFoundError(f"Input package dir not found: {input_package_dir}")
@@ -562,9 +620,9 @@ def validate_input_package(input_package_dir: Path) -> InputPackage:
     if not batch_configs_dir.exists():
         raise FileNotFoundError(f"Missing batch_configs dir: {batch_configs_dir}")
 
-    data_files = sorted(data_dir.glob("*.csv.gz"))
+    data_files = sorted([*data_dir.glob("*.csv"), *data_dir.glob("*.csv.gz")], key=lambda p: p.name.lower())
     if len(data_files) != 1:
-        raise RuntimeError(f"Expected exactly 1 data file (*.csv.gz) in {data_dir}, found {len(data_files)}")
+        raise RuntimeError(f"Expected exactly 1 data file (*.csv or *.csv.gz) in {data_dir}, found {len(data_files)}")
 
     batch_configs = sorted(batch_configs_dir.glob("*.json"), key=lambda p: (parse_batch_number(p.stem), p.name))
     if not batch_configs:
@@ -572,7 +630,7 @@ def validate_input_package(input_package_dir: Path) -> InputPackage:
 
     return InputPackage(
         root=input_package_dir,
-        data_csv_gz=data_files[0],
+        data_file=data_files[0],
         taks_dir=taks_dir,
         batch_configs=batch_configs,
     )

@@ -93,6 +93,7 @@ def run_pass_1(
     output_dir: Path,
     max_parallel: int = 1,
     emit_karmalego_output: bool = False,
+    data_mode: str = "sql",
 ) -> dict:
     input_package = validate_input_package(input_package_dir)
     ensure_dir(output_dir)
@@ -139,7 +140,7 @@ def run_pass_1(
         try:
             clean_runtime_work_dirs(runtime_paths)
             copy_batch_config_to_runtime(config_path, runtime_paths)
-            appsettings_path = write_runtime_appsettings(runtime_paths, version_type="Generic")
+            appsettings_path = write_runtime_appsettings(runtime_paths, version_type="Generic", data_mode=data_mode)
             run_karmalego(appsettings_path=appsettings_path, emit_output=emit_karmalego_output)
             archive_path = archive_runtime_outputs(
                 archive_root=archive_root,

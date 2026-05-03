@@ -1,5 +1,6 @@
 {
     "mode":  "full_run",
+    "data_mode": "sql",
     "input_package_dir":  "C:\\Users\\binada\\PycharmProjects\\kl_2_passes_batch_run\\input_package",
     "output_dir":  "C:\\Users\\binada\\PycharmProjects\\kl_2_passes_batch_run\\output",
     "candidatecount_domain_name":  "S101",

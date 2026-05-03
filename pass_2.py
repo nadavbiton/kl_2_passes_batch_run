@@ -190,6 +190,7 @@ def run_pass_2(
     domain_name: str,
     use_fast_count_engine: bool = False,
     batch_configs_path: Path | None = None,
+    data_mode: str = "sql",
 ) -> dict:
     if not domain_name.strip():
         raise ValueError("candidatecount_domain_name must not be empty")
@@ -215,7 +216,11 @@ def run_pass_2(
     runtime_paths = get_pass_2_runtime_paths()
     clean_runtime_work_dirs(runtime_paths)
     runtime_config_path = write_runtime_config(runtime_config, runtime_paths)
-    appsettings_path = write_runtime_appsettings(runtime_paths, version_type="CandidateCount")
+    appsettings_path = write_runtime_appsettings(
+        runtime_paths,
+        version_type="CandidateCount",
+        data_mode=data_mode,
+    )
     run_karmalego(appsettings_path=appsettings_path)
     runtime_minutes = round((time.perf_counter() - start) / 60, 3)
 

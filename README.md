@@ -31,8 +31,10 @@ pip install -r requirements.txt
 Use one run config JSON (not CLI-heavy):
 
 - `mode`: `full_run`, `run_pass_1_2`, `run_pass_1`, or `run_pass_2`
+- `data_mode`: `sql` or `file`
 - `input_package_dir`: folder containing:
-  - `data/*.csv.gz` (exactly one file)
+  - `data/*` (exactly one events file: `.csv` or `.csv.gz`)
+  - `concepts/*` (required in `file` mode; exactly one knowledge file: `.csv` or `.csv.gz`)
   - `taks/*`
   - `batch_configs/*.json`
 - `output_dir`: where union and summaries are written
@@ -42,6 +44,17 @@ Use one run config JSON (not CLI-heavy):
 - `pass_1_emit_karmalego_output` (optional, default `false`): print KarmaLego stdout/stderr to terminal during pass 1
 
 Example file: `run_config.example.json`
+
+### File mode behavior (`data_mode=file`)
+- `prepare` DB stage is skipped.
+- Runtime input files are copied to fixed targets:
+  - `runtime/data/events.csv` or `runtime/data/events.csv.gz`
+  - `runtime/data/knowledge.csv` or `runtime/data/knowledge.csv.gz`
+- Hard-fail (no warning) if:
+  - `input_package/data` missing
+  - `input_package/concepts` missing
+  - no `.csv`/`.csv.gz` file found in either folder
+  - more than one candidate file found in either folder
 
 ## Runtime Layout (project-local)
 - `runtime/wN/KarmalegoConfigPath` (pass 1 worker runtime, `w1`, `w2`, ...)
